@@ -70,8 +70,11 @@ const Mapbox = ({ pickupLocation, destination, driverLocation, routeCoordinates 
           <Marker
             longitude={driverLocation.longitude}
             latitude={driverLocation.latitude}
+            style={{ zIndex: 10 }}
           >
-            <div className="text-2xl">🚗</div>
+            <div className="flex items-center justify-center bg-white rounded-full p-1 shadow-lg">
+                <div className="text-3xl">🚗</div>
+            </div>
           </Marker>
         )}
         
