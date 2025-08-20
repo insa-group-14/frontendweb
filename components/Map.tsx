@@ -1,6 +1,7 @@
 'use client';
 import { LngLatLike } from 'maplibre-gl';
-import { Map, Marker } from 'react-map-gl/maplibre';
+import { Layer, Map, Marker, Source } from 'react-map-gl/maplibre';
+import type { LineLayerSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface Location {
@@ -11,9 +12,34 @@ interface Location {
 interface MapProps {
   pickupLocation: Location | null;
   destination: Location | null;
+  driverLocation: Location | null;
+  routeCoordinates: number[][] | null;
 }
 
-const Mapbox = ({ pickupLocation, destination }: MapProps) => {
+const routeLayerStyle: LineLayerSpecification = {
+  id: 'route',
+  type: 'line',
+  source: 'route',
+  layout: {
+    'line-join': 'round',
+    'line-cap': 'round',
+  },
+  paint: {
+    'line-color': '#3b82f6', // A nice blue color
+    'line-width': 6,
+  },
+};
+
+const Mapbox = ({ pickupLocation, destination, driverLocation, routeCoordinates }: MapProps) => {
+  const routeGeoJson = routeCoordinates ? {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+          type: 'LineString' as const,
+          coordinates: routeCoordinates,
+      },
+  } : null;
+
   return (
     <div className="absolute inset-0">
       <Map
@@ -30,15 +56,29 @@ const Mapbox = ({ pickupLocation, destination }: MapProps) => {
           <Marker
             longitude={pickupLocation.longitude}
             latitude={pickupLocation.latitude}
-            color="blue"
+            color="#0000FF" // Blue for pickup
           />
         )}
         {destination && (
           <Marker
             longitude={destination.longitude}
             latitude={destination.latitude}
-            color="green"
+            color="#008000" // Green for destination
           />
+        )}
+        {driverLocation && (
+          <Marker
+            longitude={driverLocation.longitude}
+            latitude={driverLocation.latitude}
+          >
+            <div className="text-2xl">🚗</div>
+          </Marker>
+        )}
+        
+        {routeGeoJson && (
+            <Source id="route" type="geojson" data={routeGeoJson}>
+                <Layer {...routeLayerStyle} />
+            </Source>
         )}
       </Map>
     </div>
