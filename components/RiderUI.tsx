@@ -40,10 +40,14 @@ const CustomAddressInput = ({ label, value, onSelect, placeholder }) => {
         return;
       }
       const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+       const addisAbabaBbox = '38.651,8.833,38.895,9.083';
+
+
       const response = await fetch(
         `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
-          searchQuery
-        )}&access_token=${accessToken}&autocomplete=true&proximity=38.7578,8.9806&limit=7`
+        searchQuery
+      )}&access_token=${accessToken}&autocomplete=true&bbox=${addisAbabaBbox}`
       );
       const data = await response.json();
   
