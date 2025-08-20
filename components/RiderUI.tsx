@@ -1,12 +1,12 @@
-"use client";
-import { useState, useEffect, useRef } from "react";
-import { useAuth } from "@clerk/nextjs";
-import io, { Socket } from "socket.io-client";
+'use client';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import io, { Socket } from 'socket.io-client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-// --- Data Structures (Unchanged) ---
+// --- Data Structures ---
 interface Location {
   longitude: number;
   latitude: number;
@@ -27,170 +27,260 @@ interface RiderUIProps {
   destination: Location | null;
   setDestination: (location: Location | null) => void;
 }
-
-// --- ✨ Updated CustomAddressInput Component ---
 const CustomAddressInput = ({ label, value, onSelect, placeholder }) => {
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [isListVisible, setListVisible] = useState(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const fetchSuggestions = async (searchQuery: string) => {
-    if (searchQuery.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-    // --- CHANGE 1: Added a limit to the API call ---
-    const response = await fetch(
-      `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
-        searchQuery
-      )}&access_token=${accessToken}&autocomplete=true&proximity=38.7578,8.9806&limit=7`
-    );
-    const data = await response.json();
-
-    const mapped = (data.features || []).map((f: any) => ({
-      mapbox_id: f.id,
-      name: f.properties?.name ?? f.text ?? "",
-      place_formatted: f.properties?.place_formatted ?? f.place_name ?? "",
-      coordinates: {
-        longitude: f.geometry.coordinates[0],
-        latitude: f.geometry.coordinates[1],
-      },
-    }));
-    setSuggestions(mapped);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = e.target.value;
-    setQuery(newQuery);
-    if (debounceTimeout) clearTimeout(debounceTimeout);
-    setDebounceTimeout(setTimeout(() => fetchSuggestions(newQuery), 300));
-  };
-
-  const handleSelect = (suggestion: Suggestion) => {
-    onSelect({
-      name: suggestion.name,
-      longitude: suggestion.coordinates.longitude,
-      latitude: suggestion.coordinates.latitude,
-    });
-    setQuery(suggestion.name);
-    setSuggestions([]);
-    setListVisible(false);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setListVisible(false);
+    const [query, setQuery] = useState("");
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [isListVisible, setListVisible] = useState(false);
+    const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+  
+    const fetchSuggestions = async (searchQuery: string) => {
+      if (searchQuery.length < 3) {
+        setSuggestions([]);
+        return;
       }
+      const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+      const response = await fetch(
+        `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
+          searchQuery
+        )}&access_token=${accessToken}&autocomplete=true&proximity=38.7578,8.9806&limit=7`
+      );
+      const data = await response.json();
+  
+      const mapped = (data.features || []).map((f: any) => ({
+        mapbox_id: f.id,
+        name: f.properties?.name ?? f.text ?? "",
+        place_formatted: f.properties?.place_formatted ?? f.place_name ?? "",
+        coordinates: {
+          longitude: f.geometry.coordinates[0],
+          latitude: f.geometry.coordinates[1],
+        },
+      }));
+      setSuggestions(mapped);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+  
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newQuery = e.target.value;
+      setQuery(newQuery);
+      if (debounceTimeout) clearTimeout(debounceTimeout);
+      setDebounceTimeout(setTimeout(() => fetchSuggestions(newQuery), 300));
     };
-  }, [containerRef]);
-
-  useEffect(() => {
-    if (value) {
-      setQuery(value.name);
-    } else {
-      setQuery("");
-    }
-  }, [value]);
-
-  return (
-    <div className="relative w-full" ref={containerRef}>
-      <Input
-        placeholder={placeholder}
-        value={query}
-        onChange={handleInputChange}
-        onFocus={() => setListVisible(true)}
-        autoComplete="off"
-      />
-      {isListVisible && suggestions.length > 0 && (
-        // --- CHANGE 2: Added max-height and overflow classes here ---
-        <div className="absolute top-full mt-1 w-full bg-background border border-border rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
-          <ul>
-            {suggestions.map((s) => (
-              <li
-                key={s.mapbox_id}
-                onClick={() => handleSelect(s)}
-                className="p-2 hover:bg-accent cursor-pointer"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium">{s.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {s.place_formatted}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
+  
+    const handleSelect = (suggestion: Suggestion) => {
+      onSelect({
+        name: suggestion.name,
+        longitude: suggestion.coordinates.longitude,
+        latitude: suggestion.coordinates.latitude,
+      });
+      setQuery(suggestion.name);
+      setSuggestions([]);
+      setListVisible(false);
+    };
+  
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+          setListVisible(false);
+        }
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, [containerRef]);
+  
+    useEffect(() => {
+      if (value) {
+        setQuery(value.name);
+      } else {
+        setQuery("");
+      }
+    }, [value]);
+  
+    return (
+      <div className="relative w-full" ref={containerRef}>
+        <Input
+          placeholder={placeholder}
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => setListVisible(true)}
+          autoComplete="off"
+        />
+        {isListVisible && suggestions.length > 0 && (
+          <div className="absolute top-full mt-1 w-full bg-background border border-border rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
+            <ul>
+              {suggestions.map((s) => (
+                <li
+                  key={s.mapbox_id}
+                  onClick={() => handleSelect(s)}
+                  className="p-2 hover:bg-accent cursor-pointer"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{s.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {s.place_formatted}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
 };
 
-// --- Main RiderUI Component (No changes needed here) ---
-const RiderUI = ({
-  pickupLocation,
-  setPickupLocation,
-  destination,
-  setDestination,
-}: RiderUIProps) => {
-  const [rideType, setRideType] = useState("private");
-  const [estimatedFare, setEstimatedFare] = useState<string | null>(null);
+// --- Main RiderUI Component ---
+const RiderUI = ({ pickupLocation, setPickupLocation, destination, setDestination }: RiderUIProps) => {
+    const [rideType, setRideType] = useState('private');
+    const [estimatedFare, setEstimatedFare] = useState<string | null>(null);
+    const [rideStatus, setRideStatus] = useState('idle');
+    const [rideId, setRideId] = useState<string | null>(null);
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const { getToken } = useAuth();
 
-  return (
-    <Card className="absolute bottom-4 left-4 right-4 mx-auto max-w-sm">
-      <CardHeader>
-        <CardTitle>Plan Your Ride</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <CustomAddressInput
-          label="Pickup Location"
-          value={pickupLocation}
-          onSelect={setPickupLocation}
-          placeholder="Enter pickup address"
-        />
-        <CustomAddressInput
-          label="Destination"
-          value={destination}
-          onSelect={setDestination}
-          placeholder="Enter destination address"
-        />
+    // --- REAL-TIME LOGIC ---
+    useEffect(() => {
+        const newSocket = io('http://localhost:3000');
+        setSocket(newSocket);
 
-        {pickupLocation && destination && (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={rideType === "private" ? "default" : "outline"}
-                onClick={() => setRideType("private")}
-              >
-                Private
-              </Button>
-              <Button
-                variant={rideType === "shared" ? "default" : "outline"}
-                onClick={() => setRideType("shared")}
-              >
-                Shared
-              </Button>
-            </div>
-            <Button
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              {estimatedFare
-                ? `Request Ride (${estimatedFare} ETB)`
-                : "Get Fare Estimate"}
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
+        newSocket.on('ride-accepted', (details) => {
+            console.log('Ride accepted!', details);
+            setRideStatus('accepted');
+        });
+
+        newSocket.on('trip-started', () => setRideStatus('in-progress'));
+
+        newSocket.on('trip-completed', (details) => {
+            setRideStatus('completed');
+            setEstimatedFare(details.fare); // Show the final fare
+        });
+
+        newSocket.on('trip-cancelled', () => setRideStatus('cancelled'));
+
+        return () => { newSocket.disconnect(); };
+    }, []);
+
+    useEffect(() => {
+        if (rideId && socket) {
+            socket.emit('join-ride-room', rideId);
+        }
+    }, [rideId, socket]);
+
+    useEffect(() => {
+    // If the pickup or destination changes, the old fare is no longer valid.
+    if (estimatedFare) {
+        setEstimatedFare(null);
+    }
+}, [pickupLocation, destination, rideType])
+
+    // --- API CALLS ---
+    const handleEstimateFare = async () => {
+        if (!pickupLocation || !destination) return;
+        const token = await getToken();
+        try {
+            const response = await fetch('http://localhost:3000/api/rides/estimate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ pickupLocation, destination, rideType })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Failed to get estimate');
+            setEstimatedFare(data.estimatedFare);
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+        }
+    };
+
+    const handleRequestRide = async () => {
+        if (!pickupLocation || !destination) return;
+        setRideStatus('searching');
+        const token = await getToken();
+        try {
+            const response = await fetch('http://localhost:3000/api/rides/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ pickupLocation, destination, rideType })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Failed to request ride');
+            setRideId(data._id); // Save the ride ID to join the socket room
+        } catch (error) {
+            console.error(error);
+            setRideStatus('idle');
+            alert(error.message);
+        }
+    };
+    
+    const resetState = () => {
+        setPickupLocation(null);
+        setDestination(null);
+        setEstimatedFare(null);
+        setRideStatus('idle');
+        setRideId(null);
+    };
+
+    // --- RENDER LOGIC ---
+    if (rideStatus !== 'idle' && rideStatus !== 'completed') {
+        return (
+            <Card className="absolute bottom-4 left-4 right-4 mx-auto max-w-sm z-10">
+                <CardHeader>
+                    <CardTitle className="text-center">
+                        {rideStatus === 'searching' && 'Finding your ride...'}
+                        {rideStatus === 'accepted' && 'Driver is on the way!'}
+                        {rideStatus === 'in-progress' && 'Trip in Progress'}
+                        {rideStatus === 'cancelled' && 'Ride Cancelled'}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="animate-pulse">
+                     <div className="h-2 bg-slate-200 rounded-full w-full mx-auto mt-2"></div>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    return (
+        <Card className="absolute bottom-4 left-4 right-4 mx-auto max-w-sm z-10">
+            <CardHeader>
+                <CardTitle>{rideStatus === 'completed' ? 'Trip Complete!' : 'Plan Your Ride'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {rideStatus === 'completed' ? (
+                    <div className="text-center">
+                        <p className="text-lg mb-4">Final Fare: {estimatedFare} ETB</p>
+                        <Button onClick={resetState} className="w-full">Plan New Ride</Button>
+                    </div>
+                ) : (
+                    <>
+                        <CustomAddressInput 
+                            label="Pickup Location" 
+                            value={pickupLocation} 
+                            onSelect={setPickupLocation} 
+                            placeholder="Enter pickup address" 
+                        />
+                        <CustomAddressInput 
+                            label="Destination" 
+                            value={destination} 
+                            onSelect={setDestination} 
+                            placeholder="Enter destination address"
+                        />
+                        {pickupLocation && destination && (
+                            <>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button variant={rideType === 'private' ? 'default' : 'outline'} onClick={() => setRideType('private')}>Private</Button>
+                                    <Button variant={rideType === 'shared' ? 'default' : 'outline'} onClick={() => setRideType('shared')}>Shared</Button>
+                                </div>
+                                <Button onClick={estimatedFare ? handleRequestRide : handleEstimateFare} className="w-full bg-green-600 hover:bg-green-700">
+                                    {estimatedFare ? `Request Ride (${estimatedFare} ETB)` : 'Get Fare Estimate'}
+                                </Button>
+                            </>
+                        )}
+                    </>
+                )}
+            </CardContent>
+        </Card>
+    );
 };
 
 export default RiderUI;
