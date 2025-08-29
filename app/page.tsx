@@ -67,17 +67,24 @@ export default function Home() {
         ) : (
           <>
             {userRole === "rider" && (
-              // The RiderUI receives the state and functions to update it
               <RiderUI
                 pickupLocation={pickupLocation}
                 setPickupLocation={setPickupLocation}
                 destination={destination}
                 setDestination={setDestination}
-                setRouteCoordinates={setRouteCoordinates} //
+                setRouteCoordinates={setRouteCoordinates}
                 setDriverLocation={setDriverLocation}
               />
             )}
             {userRole === "driver" && <DriverUI />}
+            {userRole !== "rider" && userRole !== "driver" && (
+              <div className="absolute bottom-4 left-4 right-4 mx-auto max-w-sm z-10 bg-white p-4 rounded-lg shadow-lg text-center">
+                <p>
+                  Your account is not fully configured. Please contact support
+                  to set your role.
+                </p>
+              </div>
+            )}
           </>
         )}
       </SignedIn>
